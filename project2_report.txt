@@ -1,0 +1,148 @@
+1. Basic information
+Team number 01 :
+
+#1 Student ID : 07700009920
+#1 Student Name : Divya Meharwade
+#2 Student ID : 07700010781
+#2 Student Name : Tanvi Uplenchwar
+#3 Student ID : 07700006648
+#3 Student Name : Vibha Nayak
+
+OS (bit) : 64
+gcc version : 11.4.0
+
+
+2. Meta-data
+- Show your meta-data design (Tables and Columns table) and information about each column.
+Tables and Columns catalog is of the following format
+-------------------------------------------------------------------------------------------------------------|
+|Tables (table-id:int, table-name:varchar(50), file-name:varchar(50))                                        |
+-------------------------------------------------------------------------------------------------------------|
+|Columns(table-id:int, column-name:varchar(50), column-type:int, column-length:int, column-position:int)     |
+-------------------------------------------------------------------------------------------------------------|
+
+3. Internal Record Format
+
+- Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that your team hasn't implemented this feature.
+For Sample data: Name, Age, Height, Weight : Tom, 20, NULL, 50
+We store the resord in the following format-
+________________________________________________________________________________________________________________________________________
+short      |byte                   |short          |short          |short             |byte |byte|byte |int             |int           |
+___________|_______________________|_______________|_______________|__________________|_____|____|_____|________________|______________|
+0	1	   |2	                   |3	4	       |5	6	       |7	8	          |9    |10  |11   |12	13	14	15	|16	17	18	19 |
+___________|_______________________|_______________|_______________|__________________|_____|____|_____|________________|______________|
+Field Count|Null indicator=0010000 |Name offset = 6|Age offset = 9 |Weight offset = 13|'T'	|'o' |'m'  |20				|50            |
+___=4______|_______________________|_______________|_______________|__________________|_____|____|_____|________________|______________|
+
+Field count and null indicator is followed by the non null attribute offsets. Every attribute offset is stored with respect to start of offset holder.
+i.e the offset for first attribute- Name's offset is 6. Here start of offset holder is 3. Therefore 6+3 = 9 is the offset of where the attribute value 'Tom' is actually stored in byte size spance.
+Also, the offset for second attribute- Age's offset is 9. Here start of offset holder is 3. Therefore 9+3 = 12 is the offset of where the attribute value 20 is actually stored in int size space.
+We skip the storage of null attribute entirely saving storage space.
+Hence, using just the offset values stored in the offset holder section, we access the attribute values in O(n).
+
+- Describe how you store a VarChar field.
+Within the record structure, we store the VarChar feild as byte size values. i.e every character of the varchar is stored using a single byte space.
+We do not allocate the whole space alloted for the VarChar attribute. Instead, we only store character wise byte space, saving the overal storage space.
+
+- Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that you haven't implemented this feature.
+The internal record format consists of 3 components:
+1. Field Count - First 2 bytes are reserved for the number of fields in a record.
+2. Null field indicators - The number of bytes is calculated as ceil(Field count/8). The field indicator bits let us distinguish between the null and non null fields. 0 indicates a non null field and 1 indicates null value field.
+3. Offset array - The next array consists of cumulative length of fields from the first to the current field for each non null field to directly access the data for a specific field in O(1).
+For instance: consider the first field is a varchar with 8 characters, so the offset stored for this field in the record is 8. The second field is an integer value and its length is 4. Hence the offset store for this field is 8 + 4 = 12 and so on….  Each offset field is 2 bytes long.
+4. Data - The data segment consists of the actual data segment.
+
+Format:
+[[field count][Null bit indicators][offsets for each non null field][data]]
+[[4][0][0][1][0][offset1][offset2][offset4][data]]
+
+
+Link to internal record representation diagrams : https://docs.google.com/document/d/1XmUxmQOV1jfNh7aOANlShLM2ElauthoS4KCLWqJu37Y/edit
+
+- Describe how you store a VarChar field.
+The VarChar field is not stored as the default 80 Char field; instead we only allocate the exact number of bytes needed by the field.
+
+
+- Describe how you deal with an update and delete.
+Update works as follows:
+1. If length of updated record == current record -> The same slot is used and the recorded is updated in place
+2. If length of updated record < or > current record but fits on the same page -> The current record is deleted, offsets for all the subsequent slots
+are moved and record is inserted in same page &  slot offset & length is updated in the original slot.
+3.  If length of updated record < or > current record but does not fit in the same page -> The current record is deleted, offsets for all the subsequent slots
+are moved and, find a page with sufficient space, insert the record and create a new slot.
+Use the pageNo and slotnum of the new location to be added in the original page's slot. This tombstone will now consist of -pageNo, -Slotnum.
+
+Delete works as follows:
+Given the RID of the slot, find the slotnum, get the offset and length and delete the target record. Use this offset as the offset for the next record and recompute
+offsets for all the subsequent slots. Update the deleted slot with -1 for offset and 0 for length. If a tomstone is encountered recurively read the rid by changing
+the negative values to positive values of PageNo and Slotnum.
+
+
+4. Page Format
+- Show your page format design.
+
+--------------------------------------------------------------
+R1offset|
+--------------------------------------------------------------
+R2offset|                   R3offset|
+--------------------------------------------------------------
+
+                Free Space
+
+
+--------------------------------------------------------------
+R2Len|R2 offset|R1Len|R1 offset|#Records|Free Space|FreeSpace
+     |          |      |       |   (N)  |    (FS)  |offset(FP)
+--------------------------------------------------------------
+
+
+
+5. File Format
+- Show your file format design
+
+===============Page 0===============|
+______________Records_______________|
+____________________________________|
+                                    |
+             Free space             |
+____________________________________|
+______________Footer________________|
+
+===============Page 1===============|
+______________Records_______________|
+____________________________________|
+                                    |
+             Free space             |
+____________________________________|
+______________Footer________________|
+
+===============Page 2===============|
+______________Records_______________|
+____________________________________|
+                                    |
+             Free space             |
+____________________________________|
+______________Footer________________|
+.
+.
+.
+.
+.
+
+6. Implementation Detail
+- Other implementation details goes here.
+Scan iterator and getNextRecord-
+Function loops through pages 0 till Total number of pages.
+Within the page for loop, function loops through all the slots within the page.
+For all the slots available, if the slot number is not equal to tombstone then read the record using Page class's readRecord function.
+Once we have the record buffer - we read through all the values of the attributes stored.
+If the required condition attribute name is found - we check if the value holds the predicate using the checkPredicate function.
+If the predicateHolds we return only the attributes requested in attributeNames vector.
+Meanwhile the class variables in the Scan class hold the current page and slot number which satisfies the predicate so that if the getNextRecord is called,
+it can continue from the page and slot we just left behind.
+
+
+
+7. Other (optional)
+- Freely use this section to tell us about things that are related to the project 2, but not related to the other sections (optional)
+

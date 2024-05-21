@@ -1,0 +1,71 @@
+﻿Project 1 Report
+Group 1
+1. Basic information
+Student ID :         07700009920, 07700010781, 07700006648
+Student Name : Divya Meharwade, Tanvi Uplenchwar, Vibha Nayak
+OS (bit) : 64
+gcc version : 11.4.0
+
+
+2. Internal Record Format
+- Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that you haven't implemented this feature.
+The internal record format consists of 3 components:
+1. Field Count - First 2 bytes are reserved for the number of fields in a record.
+2. Null field indicators - The number of bytes is calculated as ceil(Field count/8). The field indicator bits let us distinguish between the null and non null fields. 0 indicates a non null field and 1 indicates null value field.
+3. Offset array - The next array consists of cumulative length of fields from the first to the current field for each non null field to directly access the data for a specific field in O(1). 
+For instance: consider the first field is a varchar with 8 characters, so the offset stored for this field in the record is 8. The second field is an integer value and its length is 4. Hence the offset store for this field is 8 + 4 = 12 and so on….  Each offset field is 2 bytes long.
+4. Data - The data segment consists of the actual data segment.
+
+Format:
+[[field count][Null bit indicators][offsets for each non null field][data]]
+[[4][0][0][1][0][offset1][offset2][offset4][data]]
+
+
+- Describe how you store a VarChar field.
+The VarChar field is not stored as the default 80 Char field; instead we only allocate the exact number of bytes needed by the field. 
+--------------------------------------------------------------
+R1offset|
+--------------------------------------------------------------
+R2offset|                   R3offset|
+--------------------------------------------------------------
+
+                Free Space
+
+
+--------------------------------------------------------------
+R2Len|R2 offset|R1Len|R1 offset|#Records|Free Space|FreeSpace
+     |          |      |       |   (N)  |    (FS)  |offset(FP)
+--------------------------------------------------------------
+
+Link to internal record representation diagrams : https://docs.google.com/document/d/1XmUxmQOV1jfNh7aOANlShLM2ElauthoS4KCLWqJu37Y/edit
+
+3. Page Format
+- Show your page format design
+  
+
+-We have implemented a heap file structure.
+-The page is designed to hold the records and information about the records in the format shown in the image above. 
+-The records are stored starting from the beginning of the page and a footer that stores:
+* Free space offset
+* Available free space
+* Number of Records 
+* Record offsets and Lengths of record consecutively
+-The insertRecord method first constructs the record as described in the previous section and calls Page class's writeRecord method.
+-If the last page has enough space, the record is inserted into this page. 
+-If not, we find the first page with free space large enough to store the record.
+-The free space is coalesced in the center of the page even on adhoc insertion of records ("hole" created on record deletion will be handled during implementation of deleteRecord method).
+-To avoid change of RID on internal movement of records we keep track of the record's offset in the slot table on the footer of the page.
+-Every record RID's slot number will hold the record's slot number (as computed during record insertion) and not the offset itself.
+
+
+4. Implementation Detail
+* Page search logic - Currently we are storing the free space offset in the footer of every page. We look for the offset linearly from the first page to the end when looking for the free page to insert the record.
+* Team Memeber Contributions
+- PagedFileManager and Read Record - Implemented by Divya Meharwade
+- FileHandle Class functions and page search logic - Implemented by Tanvi Uplenchwar
+- Insert and Print Record logic - Implemented by Vibha Nayak
+
+
+
+5. Other (optional)
+- Freely use this section to tell us about things that are related to the project 1, but not related to the other sections (optional)

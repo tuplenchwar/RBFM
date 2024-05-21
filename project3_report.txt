@@ -1,0 +1,61 @@
+1. Basic information
+Team number 01 :
+#1 Student ID : 07700009920
+#1 Student Name : Divya Meharwade
+#2 Student ID : 07700010781
+#2 Student Name : Tanvi Uplenchwar
+#3 Student ID : 07700006648
+#3 Student Name : Vibha Nayak
+
+OS (bit) : 64
+gcc version : 11.4.0
+
+
+2. Catalog information about Index
+- Show your catalog information about an index (tables, columns).
+Not implemented.
+
+
+3. Block Nested Loop Join (If you have implemented this feature)
+- Describe how your block nested loop join works (especially, how you manage the given buffers.)
+An inthashMap is used which is capped at numpages*PAGE_SIZE bytes.
+Tuples from outer relation are loaded first till intHashMap is full and pushed into the hashmap.
+A block of Right table is loaded and each rhs attribute of the tuple is checked in the hashmap to find the corresponding
+left tuples to join. Once a leftTuple is found combine function is called which combined both the tuples together with their
+nullbits as prefix and returns the tuple when nextTupleValue is called.
+The extra records from the map are stored globally to be returned in the next call.
+
+
+4. Index Nested Loop Join (If you have implemented this feature)
+- Describe how your grace hash join works.
+Not implemented.
+
+5. Grace Hash Join (If you have implemented this feature)
+- Describe how your grace hash join works (especially, in-memory structure).
+Not implemented.
+
+6. Aggregation
+- Describe how your aggregation (basic, group-based hash) works.
+Basic Aggregation - Invoked table scan and created a function (readValue) that iterates on recorddescriptor for the
+table to get the attributes for aggreagation and returns the values. Once the values are returned, aggregation
+operation is performed and the results are pushed in the queue.
+
+Group Aggregation - Group aggregate and aggregate function values are both calculated and stored in a hashmap.
+Items in the hashmap are iterated to group the values by each group and the result are pushed in the queue.
+The same readvalue function is used in group aggregation as used for basic.
+
+
+7. Implementation Detail
+- Have you added your own source file (.cc or .h)?
+No
+
+- Have you implemented any optional features? Then, describe them here.
+Group Aggregation has been implemented.
+
+- Other implementation details:
+Not implemented.
+
+
+6. Other (optional)
+- Freely use this section to tell us about things that are related to the project 4, but not related to the other sections (optional)
+
